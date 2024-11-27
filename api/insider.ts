@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import fetch from 'node-fetch';
 
 export const config = {
   runtime: 'edge',
@@ -30,4 +31,4 @@ export async function handler(
   }
 }
 
-export default handler; 
+export default handler;
