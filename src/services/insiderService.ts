@@ -96,8 +96,7 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const rows = doc.querySelectorAll('table tr:not(:first-child)');
-      console.log('Found rows in page:', rows.length);
-      
+
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
         console.log('Row cells:', cells.length);
@@ -123,7 +122,6 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
         return transaction;
       });
       
-      console.log('Parsed transactions in page:', pageTransactions.length);
       allTransactions.push(...pageTransactions);
     }
     
