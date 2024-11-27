@@ -4,11 +4,14 @@ import { cn } from '@/lib/utils';
 import { InsiderTransaction } from '@/types/insider';
 import { fetchInsiderTransactions } from '@/services/insiderService';
 
-export function TransactionsTable() {
+interface TransactionsTableProps {
+  searchQuery: string;
+}
+
+export function TransactionsTable({ searchQuery }: TransactionsTableProps) {
   const [transactions, setTransactions] = useState<InsiderTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     async function loadData() {
@@ -47,63 +50,54 @@ export function TransactionsTable() {
   }
 
   return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search by issuer or insider..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="border p-2 mb-4 w-full"
-      />
-      <div className="w-full overflow-auto rounded-lg border border-primary/20">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Insider</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Volume</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Current Price</TableHead>
-              <TableHead className="text-right">Change %</TableHead>
+    <div className="w-full overflow-auto rounded-lg border border-primary/20">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Insider</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead className="text-right">Volume</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Current Price</TableHead>
+            <TableHead className="text-right">Change %</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredTransactions.map((transaction, index) => (
+            <TableRow key={index}>
+              <TableCell>{transaction.publishDate}</TableCell>
+              <TableCell>{transaction.issuer}</TableCell>
+              <TableCell>{transaction.insider}</TableCell>
+              <TableCell>
+                <span className={cn(
+                  "px-2 py-1 rounded-full text-xs font-semibold",
+                  transaction.type === 'Förvärv' 
+                    ? "bg-green-500/20 text-green-500" 
+                    : "bg-red-500/20 text-red-500"
+                )}>
+                  {transaction.type}
+                </span>
+              </TableCell>
+              <TableCell className="text-right">
+                {transaction.volume.toLocaleString()} {transaction.volumeUnit}
+              </TableCell>
+              <TableCell className="text-right">
+                {transaction.price.toLocaleString()} {transaction.currency}
+              </TableCell>
+              <TableCell className="text-right">
+                {transaction.currentPrice?.toLocaleString() ?? '-'}
+              </TableCell>
+              <TableCell className="text-right">
+                {transaction.priceChange 
+                  ? `${transaction.priceChange.toFixed(2)}%` 
+                  : '-'}
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTransactions.map((transaction, index) => (
-              <TableRow key={index}>
-                <TableCell>{transaction.publishDate}</TableCell>
-                <TableCell>{transaction.issuer}</TableCell>
-                <TableCell>{transaction.insider}</TableCell>
-                <TableCell>
-                  <span className={cn(
-                    "px-2 py-1 rounded-full text-xs font-semibold",
-                    transaction.type === 'Förvärv' 
-                      ? "bg-green-500/20 text-green-500" 
-                      : "bg-red-500/20 text-red-500"
-                  )}>
-                    {transaction.type}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  {transaction.volume.toLocaleString()} {transaction.volumeUnit}
-                </TableCell>
-                <TableCell className="text-right">
-                  {transaction.price.toLocaleString()} {transaction.currency}
-                </TableCell>
-                <TableCell className="text-right">
-                  {transaction.currentPrice?.toLocaleString() ?? '-'}
-                </TableCell>
-                <TableCell className="text-right">
-                  {transaction.priceChange 
-                    ? `${transaction.priceChange.toFixed(2)}%` 
-                    : '-'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
