@@ -133,6 +133,8 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
 
     // Fetch stock prices for all collected symbols
     const stockPrices = await fetchStockPrices(symbols);
+
+    console.log('Fetched stock prices:', symbols);
     
     // Add stock prices to transactions
     return allTransactions.map(transaction => {
