@@ -138,7 +138,8 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     
     // Add stock prices to transactions
     return allTransactions.map(transaction => {
-      const stockData = stockPrices.get(COMPANY_SYMBOLS[transaction.issuer]);
+      const symbol = findCompanySymbol(transaction.issuer); // Find the symbol based on the issuer
+      const stockData = symbol ? stockPrices.get(symbol) : undefined; // Get stock data using the found symbol
       if (stockData) {
         return {
           ...transaction,
@@ -148,8 +149,8 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
       }
       return {
         ...transaction,
-        currentPrice: null,
-        priceChange: null
+        currentPrice: null, // or a default value
+        priceChange: null // or a default value
       };
     });
     
