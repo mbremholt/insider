@@ -7,7 +7,7 @@ export const config = {
 export default async function handler(req: Request) {
   try {
     const allData: string[] = [];
-    for (let page = 1; page <= 10; page++) {
+    for (let page = 1; page <= 2; page++) {
       const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
       
       if (!response.ok) {
