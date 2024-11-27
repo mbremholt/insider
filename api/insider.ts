@@ -6,15 +6,19 @@ export const config = {
 
 export default async function handler(req: Request) {
   try {
-    const response = await fetch('https://marknadssok.fi.se/publiceringsklient');
-    
-    if (!response.ok) {
-      throw new Error(`Upstream server responded with status: ${response.status}`);
+    const allData: string[] = [];
+    for (let page = 1; page <= 10; page++) {
+      const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
+      
+      if (!response.ok) {
+        throw new Error(`Upstream server responded with status: ${response.status}`);
+      }
+      
+      const html = await response.text();
+      allData.push(html);
     }
     
-    const html = await response.text();
-    
-    return new Response(html, {
+    return new Response(allData.join('\n'), {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
