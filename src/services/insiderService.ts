@@ -99,7 +99,9 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
         const cells = row.querySelectorAll('td');
         const issuer = cells[1]?.textContent?.trim() || '';
         const symbol = findCompanySymbol(issuer); // Use the new function to find the symbol
-        if (symbol) symbols.push(symbol); // Collect symbols for stock price fetching
+        if (symbol) {
+          symbols.push(symbol); // Collect symbols for stock price fetching
+        }
         
         return {
           publishDate: cells[0]?.textContent?.trim() || '',
@@ -126,6 +128,9 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     
     console.log('Total transactions parsed:', allTransactions.length);
     
+    // Log all collected symbols before fetching stock prices
+    console.log('Symbols to be fetched:', symbols);
+
     // Fetch stock prices for all collected symbols
     const stockPrices = await fetchStockPrices(symbols);
     
