@@ -35,17 +35,22 @@ const COMPANY_SYMBOLS: { [key: string]: string } = {
 
 async function fetchStockPrice(): Promise<{ currentPrice: number, changePercent: number } | null> {
   try {
-    // Test with just Boliden (BOL.ST)
+    console.log('Fetching stock price for BOL.ST...');
     const response = await fetch(`/api/stock?symbol=BOL.ST`);
+    console.log('Stock API response status:', response.status);
     const data = await response.json();
+    console.log('Stock API data:', data);
     
     if (data.chart?.result?.[0]) {
       const result = data.chart.result[0];
-      return {
+      const stockData = {
         currentPrice: result.meta.regularMarketPrice,
         changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
       };
+      console.log('Processed stock data:', stockData);
+      return stockData;
     }
+    console.log('No stock data found in response');
     return null;
   } catch (error) {
     console.error('Error fetching stock price:', error);
