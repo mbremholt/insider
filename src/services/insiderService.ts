@@ -98,7 +98,7 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
         const issuer = cells[1]?.textContent?.trim() || '';
-        const symbol = COMPANY_SYMBOLS[issuer]; // Get the symbol based on issuer
+        const symbol = findCompanySymbol(issuer); // Use the new function to find the symbol
         if (symbol) symbols.push(symbol); // Collect symbols for stock price fetching
         
         return {
@@ -150,4 +150,15 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     console.error('Error fetching insider transactions:', error);
     throw error;
   }
+}
+
+// Function to find the company symbol based on issuer name
+function findCompanySymbol(issuer: string): string | undefined {
+  const normalizedIssuer = issuer.toLowerCase();
+  for (const [companyName, symbol] of Object.entries(COMPANY_SYMBOLS)) {
+    if (normalizedIssuer.includes(companyName.toLowerCase())) {
+      return symbol; // Return the symbol if a match is found
+    }
+  }
+  return undefined; // Return undefined if no match is found
 } 
