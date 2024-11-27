@@ -140,11 +140,17 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     return allTransactions.map(transaction => {
       const symbol = findCompanySymbol(transaction.issuer); // Find the symbol based on the issuer
       const stockData = symbol ? stockPrices.get(symbol) : undefined; // Get stock data using the found symbol
+
+      // Calculate Change %
+      const changePercent = stockData && transaction.price 
+        ? ((stockData.currentPrice - transaction.price) / transaction.price) * 100
+        : null; // Set to null if stockData or transaction.price is not available
+
       if (stockData) {
         return {
           ...transaction,
           currentPrice: stockData.currentPrice,
-          priceChange: stockData.changePercent
+          priceChange: changePercent // Add the calculated change percentage
         };
       }
       return {
