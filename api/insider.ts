@@ -7,15 +7,22 @@ export default async function handler(
 ) {
   try {
     const response = await fetch('https://marknadssok.fi.se/publiceringsklient');
+    
+    if (!response.ok) {
+      throw new Error(`Upstream server responded with status: ${response.status}`);
+    }
+    
     const html = await response.text();
     
-    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     
     res.status(200).send(html);
   } catch (error) {
-    console.error('Error fetching data:', error);
-    res.status(500).json({ error: 'Failed to fetch data' });
+    console.error('Detailed error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 } 
