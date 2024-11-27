@@ -5,39 +5,34 @@ export const config = {
 };
 
 export default async function handler(req: Request) {
+  const allData: string[] = [];
+  
   try {
-    const allData: string[] = [];
-    for (let page = 1; page <= 2; page++) {
-      const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
+    // Load 10 pages
+    for (let page = 1; page <= 10; page++) {
+      const url = `https://marknadssok.fi.se/publiceringsklient/?Page=${page}`;
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Upstream server responded with status: ${response.status}`);
       }
       
-      const html = await response.text();
-      allData.push(html);
+      const data = await response.text();
+      allData.push(data); // Collect data from each page
     }
-    
-    return new Response(allData.join('\n'), {
+
+    // Combine all data into a single response
+    const combinedData = allData.join('\n'); // Join pages with a newline or any other delimiter
+
+    return new Response(combinedData, {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
         'Content-Type': 'text/html',
+        'Access-Control-Allow-Origin': '*', // Allow CORS
       },
     });
   } catch (error) {
-    console.error('Detailed error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to fetch data',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.error('Error fetching from target URL:', error);
+    return new Response('Error fetching data', { status: 500 });
   }
 }

@@ -75,56 +75,54 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     const allTransactions: InsiderTransaction[] = [];
     const symbols: string[] = []; // To collect all symbols
 
-    // Load 10 pages
-    for (let page = 1; page <= 2; page++) {
-      const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
-      
-      if (!response.ok) {
-        throw new Error(`Upstream server responded with status: ${response.status}`);
-      }
-      
-      const text = await response.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      
-      // Find all tables in the document
-      const tables = doc.querySelectorAll('table');
-      console.log('Number of tables found:', tables.length);
-      
-      // Iterate through each table found
-      tables.forEach((table) => {
-        const rows = table.querySelectorAll('tr:not(:first-child)');
-        console.log('Found rows in table:', rows.length);
-        
-        const pageTransactions = Array.from(rows).map(row => {
-          const cells = row.querySelectorAll('td');
-          const issuer = cells[1]?.textContent?.trim() || '';
-          const symbol = COMPANY_SYMBOLS[issuer]; // Get the symbol based on issuer
-          if (symbol) symbols.push(symbol); // Collect symbols for stock price fetching
-          
-          return {
-            publishDate: cells[0]?.textContent?.trim() || '',
-            issuer,
-            insider: cells[2]?.textContent?.trim() || '',
-            position: cells[3]?.textContent?.trim() || '',
-            related: cells[4]?.textContent?.trim() === 'Ja',
-            type: cells[5]?.textContent?.trim() as 'Förvärv' | 'Avyttring',
-            instrumentName: cells[6]?.textContent?.trim() || '',
-            instrumentType: cells[7]?.textContent?.trim() || '',
-            isin: cells[8]?.textContent?.trim() || '',
-            transactionDate: cells[9]?.textContent?.trim() || '',
-            volume: parseFloat(cells[10]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
-            volumeUnit: cells[11]?.textContent?.trim() || '',
-            price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
-            currency: cells[13]?.textContent?.trim() || '',
-            details: cells[15]?.querySelector('a')?.href,
-          };
-        });
-        
-        console.log('Parsed transactions in table:', pageTransactions.length);
-        allTransactions.push(...pageTransactions);
-      });
+    // Fetch data from the proxy which now loads 10 pages
+    const response = await fetch(`/api/insider`);
+    
+    if (!response.ok) {
+      throw new Error(`Upstream server responded with status: ${response.status}`);
     }
+    
+    const text = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+
+    // Find all tables in the document
+    const tables = doc.querySelectorAll('table');
+    console.log('Number of tables found:', tables.length);
+    
+    // Iterate through each table found
+    tables.forEach((table) => {
+      const rows = table.querySelectorAll('tr:not(:first-child)');
+      console.log('Found rows in table:', rows.length);
+      
+      const pageTransactions = Array.from(rows).map(row => {
+        const cells = row.querySelectorAll('td');
+        const issuer = cells[1]?.textContent?.trim() || '';
+        const symbol = COMPANY_SYMBOLS[issuer]; // Get the symbol based on issuer
+        if (symbol) symbols.push(symbol); // Collect symbols for stock price fetching
+        
+        return {
+          publishDate: cells[0]?.textContent?.trim() || '',
+          issuer,
+          insider: cells[2]?.textContent?.trim() || '',
+          position: cells[3]?.textContent?.trim() || '',
+          related: cells[4]?.textContent?.trim() === 'Ja',
+          type: cells[5]?.textContent?.trim() as 'Förvärv' | 'Avyttring',
+          instrumentName: cells[6]?.textContent?.trim() || '',
+          instrumentType: cells[7]?.textContent?.trim() || '',
+          isin: cells[8]?.textContent?.trim() || '',
+          transactionDate: cells[9]?.textContent?.trim() || '',
+          volume: parseFloat(cells[10]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
+          volumeUnit: cells[11]?.textContent?.trim() || '',
+          price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
+          currency: cells[13]?.textContent?.trim() || '',
+          details: cells[15]?.querySelector('a')?.href,
+        };
+      });
+      
+      console.log('Parsed transactions in table:', pageTransactions.length);
+      allTransactions.push(...pageTransactions);
+    });
     
     console.log('Total transactions parsed:', allTransactions.length);
     
