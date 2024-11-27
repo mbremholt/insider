@@ -66,25 +66,39 @@ async function fetchStockPrice(): Promise<{ currentPrice: number, changePercent:
 
 export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> {
   try {
+    console.log('Starting to fetch insider transactions...');
     const response = await fetch('/api/insider');
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const htmlPages = (await response.text()).split('\n');
+    const text = await response.text();
+    console.log('Received response text length:', text.length);
+    
+    const htmlPages = text.split('\n');
+    console.log('Number of pages:', htmlPages.length);
+    
     const allTransactions: InsiderTransaction[] = [];
     
     // Fetch stock price once
     const stockData = await fetchStockPrice();
+    console.log('Stock data:', stockData);
     
     for (const html of htmlPages) {
+      if (!html.trim()) {
+        console.log('Skipping empty page');
+        continue;
+      }
+      
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const rows = doc.querySelectorAll('table tr:not(:first-child)');
+      console.log('Found rows in page:', rows.length);
       
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
-        return {
+        const transaction = {
           publishDate: cells[0]?.textContent?.trim() || '',
           issuer: cells[1]?.textContent?.trim() || '',
           insider: cells[2]?.textContent?.trim() || '',
@@ -100,16 +114,19 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
           price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
           currency: cells[13]?.textContent?.trim() || '',
           details: cells[15]?.querySelector('a')?.href,
-          // Use the same stock data for all transactions as a test
           currentPrice: stockData?.currentPrice,
           priceChange: stockData?.changePercent
         };
+        return transaction;
       });
       
+      console.log('Parsed transactions in page:', pageTransactions.length);
       allTransactions.push(...pageTransactions);
     }
     
+    console.log('Total transactions parsed:', allTransactions.length);
     return allTransactions;
+    
   } catch (error) {
     console.error('Error fetching insider transactions:', error);
     throw error;
