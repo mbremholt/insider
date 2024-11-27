@@ -91,6 +91,8 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
         continue;
       }
       
+      console.log('HTML content of page:', html);
+      
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const rows = doc.querySelectorAll('table tr:not(:first-child)');
@@ -98,6 +100,7 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
       
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
+        console.log('Row cells:', cells.length);
         const transaction = {
           publishDate: cells[0]?.textContent?.trim() || '',
           issuer: cells[1]?.textContent?.trim() || '',
