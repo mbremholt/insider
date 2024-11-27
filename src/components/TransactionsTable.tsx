@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { type Transaction, type TableProps } from '@/types';
+import { type TableProps } from '@/types';
 import { Sparkline } from '@/components/ui/sparkline';
 import { cn } from '@/lib/utils';
 
