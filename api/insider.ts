@@ -1,7 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fetch from 'node-fetch';
 
-export default async function handler(
+export const config = {
+  runtime: 'nodejs18.x',
+};
+
+export async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -25,4 +29,6 @@ export default async function handler(
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-} 
+}
+
+export default handler; 
