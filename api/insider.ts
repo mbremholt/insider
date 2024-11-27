@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fetch from 'node-fetch';
 
 export const config = {
-  runtime: 'nodejs18.x',
+  runtime: 'edge',
 };
 
 export async function handler(
