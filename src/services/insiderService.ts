@@ -76,8 +76,12 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     const text = await response.text();
     console.log('Received response text length:', text.length);
     
-    const htmlPages = text.split('\n');
-    console.log('Number of pages:', htmlPages.length);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    
+    // Find all tables in the document
+    const tables = doc.querySelectorAll('table');
+    console.log('Number of tables found:', tables.length);
     
     const allTransactions: InsiderTransaction[] = [];
     
@@ -85,22 +89,14 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     const stockData = await fetchStockPrice();
     console.log('Stock data:', stockData);
     
-    for (const html of htmlPages) {
-      if (!html.trim()) {
-        console.log('Skipping empty page');
-        continue;
-      }
+    // Iterate through each table found
+    tables.forEach((table) => {
+      const rows = table.querySelectorAll('tr:not(:first-child)');
+      console.log('Found rows in table:', rows.length);
       
-      console.log('HTML content of page:', html);
-      
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const rows = doc.querySelectorAll('table tr:not(:first-child)');
-
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
-        console.log('Row cells:', cells.length);
-        const transaction = {
+        return {
           publishDate: cells[0]?.textContent?.trim() || '',
           issuer: cells[1]?.textContent?.trim() || '',
           insider: cells[2]?.textContent?.trim() || '',
@@ -119,11 +115,11 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
           currentPrice: stockData?.currentPrice,
           priceChange: stockData?.changePercent
         };
-        return transaction;
       });
       
+      console.log('Parsed transactions in table:', pageTransactions.length);
       allTransactions.push(...pageTransactions);
-    }
+    });
     
     console.log('Total transactions parsed:', allTransactions.length);
     return allTransactions;
