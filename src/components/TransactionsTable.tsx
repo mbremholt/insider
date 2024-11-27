@@ -90,9 +90,13 @@ export function TransactionsTable({ searchQuery }: TransactionsTableProps) {
                 {transaction.currentPrice?.toLocaleString() ?? '-'}
               </TableCell>
               <TableCell className="text-right">
-                {transaction.priceChange 
-                  ? `${transaction.priceChange.toFixed(2)}%` 
-                  : '-'}
+                {transaction.priceChange != null ? (
+                  <span className={transaction.priceChange > 0 ? "text-green-500" : "text-red-500"}>
+                    {transaction.priceChange.toFixed(2)}%
+                  </span>
+                ) : (
+                  '-'
+                )}
               </TableCell>
             </TableRow>
           ))}
