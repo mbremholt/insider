@@ -14,7 +14,6 @@ export interface InsiderTransaction {
   price: number;
   currency: string;
   details?: string;
-  currentPrice?: number;
-  priceChange?: number;
-  symbol?: string;
+  currentPrice?: number | null;
+  priceChange?: number | null;
 } 

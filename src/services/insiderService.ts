@@ -38,7 +38,6 @@ async function fetchStockPrices(symbols: string[]): Promise<Map<string, { curren
   const priceMap = new Map();
 
   try {
-    // Fetch prices in batches of 5 to avoid rate limits
     for (let i = 0; i < uniqueSymbols.length; i += 5) {
       const batch = uniqueSymbols.slice(i, i + 5);
       const promises = batch.map(symbol => 
@@ -51,13 +50,14 @@ async function fetchStockPrices(symbols: string[]): Promise<Map<string, { curren
                 currentPrice: result.meta.regularMarketPrice,
                 changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
               });
+            } else {
+              console.warn(`No data for symbol: ${symbol}`);
             }
           })
           .catch(error => console.error(`Error fetching ${symbol}:`, error))
       );
       
       await Promise.all(promises);
-      // Small delay between batches
       if (i + 5 < uniqueSymbols.length) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
@@ -139,7 +139,11 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
           priceChange: stockData.changePercent
         };
       }
-      return transaction;
+      return {
+        ...transaction,
+        currentPrice: null,
+        priceChange: null
+      };
     });
     
   } catch (error) {
