@@ -4,7 +4,7 @@ export interface InsiderTransaction {
   insider: string;
   position: string;
   related: boolean;
-  type: 'Förvärv' | 'Avyttring'; // Buy/Sell
+  type: 'Förvärv' | 'Avyttring';
   instrumentName: string;
   instrumentType: string;
   isin: string;
@@ -14,4 +14,7 @@ export interface InsiderTransaction {
   price: number;
   currency: string;
   details?: string;
+  currentPrice?: number;
+  priceChange?: number;
+  symbol?: string;
 } 
