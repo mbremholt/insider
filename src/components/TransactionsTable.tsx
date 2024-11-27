@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowDown, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InsiderTransaction } from '@/types/insider';
 import { fetchInsiderTransactions } from '@/services/insiderService';

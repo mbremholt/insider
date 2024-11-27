@@ -76,7 +76,7 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     const symbols: string[] = []; // To collect all symbols
 
     // Load 10 pages
-    for (let page = 1; page <= 10; page++) {
+    for (let page = 1; page <= 2; page++) {
       const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
       
       if (!response.ok) {
