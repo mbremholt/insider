@@ -33,40 +33,24 @@ const COMPANY_SYMBOLS: { [key: string]: string } = {
   'Nibe': 'NIBE-B.ST'
 };
 
-async function fetchStockPrices(symbols: string[]): Promise<Map<string, { currentPrice: number, changePercent: number }>> {
-  const uniqueSymbols = [...new Set(symbols)];
-  const priceMap = new Map();
-
+async function fetchStockPrice(): Promise<{ currentPrice: number, changePercent: number } | null> {
   try {
-    // Fetch prices in batches of 5 to avoid rate limits
-    for (let i = 0; i < uniqueSymbols.length; i += 5) {
-      const batch = uniqueSymbols.slice(i, i + 5);
-      const promises = batch.map(symbol => 
-        fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.chart?.result?.[0]) {
-              const result = data.chart.result[0];
-              priceMap.set(symbol, {
-                currentPrice: result.meta.regularMarketPrice,
-                changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
-              });
-            }
-          })
-          .catch(error => console.error(`Error fetching ${symbol}:`, error))
-      );
-      
-      await Promise.all(promises);
-      // Small delay between batches
-      if (i + 5 < uniqueSymbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+    // Test with just Boliden (BOL.ST)
+    const response = await fetch(`/api/stock?symbol=BOL.ST`);
+    const data = await response.json();
+    
+    if (data.chart?.result?.[0]) {
+      const result = data.chart.result[0];
+      return {
+        currentPrice: result.meta.regularMarketPrice,
+        changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
+      };
     }
+    return null;
   } catch (error) {
-    console.error('Error fetching stock prices:', error);
+    console.error('Error fetching stock price:', error);
+    return null;
   }
-
-  return priceMap;
 }
 
 export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> {
@@ -79,7 +63,9 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
     const htmlPages = (await response.text()).split('\n');
     const allTransactions: InsiderTransaction[] = [];
     
-    // First parse all transactions without stock prices
+    // Fetch stock price once
+    const stockData = await fetchStockPrice();
+    
     for (const html of htmlPages) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
@@ -87,12 +73,9 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
       
       const pageTransactions = Array.from(rows).map(row => {
         const cells = row.querySelectorAll('td');
-        const companyName = cells[1]?.textContent?.trim() || '';
-        const symbol = COMPANY_SYMBOLS[companyName];
-        
         return {
           publishDate: cells[0]?.textContent?.trim() || '',
-          issuer: companyName,
+          issuer: cells[1]?.textContent?.trim() || '',
           insider: cells[2]?.textContent?.trim() || '',
           position: cells[3]?.textContent?.trim() || '',
           related: cells[4]?.textContent?.trim() === 'Ja',
@@ -106,35 +89,16 @@ export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> 
           price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
           currency: cells[13]?.textContent?.trim() || '',
           details: cells[15]?.querySelector('a')?.href,
-          symbol
+          // Use the same stock data for all transactions as a test
+          currentPrice: stockData?.currentPrice,
+          priceChange: stockData?.changePercent
         };
       });
       
       allTransactions.push(...pageTransactions);
     }
     
-    // Then fetch all stock prices at once
-    const symbols = allTransactions
-      .map(t => t.symbol)
-      .filter((symbol): symbol is string => !!symbol);
-    
-    const stockPrices = await fetchStockPrices(symbols);
-    
-    // Add stock prices to transactions
-    return allTransactions.map(transaction => {
-      if (transaction.symbol) {
-        const stockData = stockPrices.get(transaction.symbol);
-        if (stockData) {
-          return {
-            ...transaction,
-            currentPrice: stockData.currentPrice,
-            priceChange: stockData.changePercent
-          };
-        }
-      }
-      return transaction;
-    });
-    
+    return allTransactions;
   } catch (error) {
     console.error('Error fetching insider transactions:', error);
     throw error;
