@@ -1,11 +1,59 @@
+import { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { type TableProps } from '@/types';
 import { Sparkline } from '@/components/ui/sparkline';
 import { cn } from '@/lib/utils';
+import { InsiderTransaction } from '@/types/insider';
+import { fetchInsiderTransactions } from '@/services/insiderService';
 
-export function TransactionsTable({ data, onSort, sortColumn, sortDirection }: TableProps) {
-  const mockSparklineData = [1, 2, 1.5, 3, 2, 4, 3.5, 2, 3, 4];
+export function TransactionsTable() {
+  const [data, setData] = useState<InsiderTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortColumn, setSortColumn] = useState<keyof InsiderTransaction>('publishDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const transactions = await fetchInsiderTransactions();
+      setData(transactions);
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSort = (column: keyof InsiderTransaction) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    const aValue = a[sortColumn];
+    const bValue = b[sortColumn];
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return direction * aValue.localeCompare(bValue);
+    }
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return direction * (aValue - bValue);
+    }
+    return 0;
+  });
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="w-full overflow-auto rounded-lg border border-primary/20">
@@ -14,57 +62,47 @@ export function TransactionsTable({ data, onSort, sortColumn, sortDirection }: T
           <TableRow>
             <TableHead 
               className="cursor-pointer hover:text-primary"
-              onClick={() => onSort('insiderName')}
+              onClick={() => handleSort('insider')}
             >
               Insider Name
-              {sortColumn === 'insiderName' && (
+              {sortColumn === 'insider' && (
                 sortDirection === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
                 <ArrowDown className="inline ml-1 h-4 w-4" />
               )}
             </TableHead>
             <TableHead>Company Name</TableHead>
-            <TableHead>Ticker</TableHead>
             <TableHead>Position</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Volume</TableHead>
+            <TableHead className="text-right">Price</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead className="text-right">Price Change</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((transaction, index) => (
+          {sortedData.map((transaction, index) => (
             <TableRow 
-              key={`${transaction.insiderName}-${index}`}
+              key={`${transaction.insider}-${index}`}
               className="hover:bg-primary/5 transition-colors"
             >
-              <TableCell className="font-medium">{transaction.insiderName}</TableCell>
-              <TableCell>{transaction.companyName}</TableCell>
-              <TableCell>{transaction.ticker}</TableCell>
+              <TableCell className="font-medium">{transaction.insider}</TableCell>
+              <TableCell>{transaction.issuer}</TableCell>
               <TableCell>{transaction.position}</TableCell>
               <TableCell>
                 <span className={cn(
                   "px-2 py-1 rounded-full text-xs font-semibold",
-                  transaction.type === 'Buy' ? "bg-green-500/20 text-green-500" : 
+                  transaction.type === 'Förvärv' ? "bg-green-500/20 text-green-500" : 
                   "bg-red-500/20 text-red-500"
                 )}>
                   {transaction.type}
                 </span>
               </TableCell>
               <TableCell className="text-right font-mono">
-                {transaction.volume.toLocaleString()}
+                {transaction.volume.toLocaleString()} {transaction.volumeUnit}
               </TableCell>
-              <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <span className={cn(
-                    "font-mono",
-                    transaction.priceChange > 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {transaction.priceChange > 0 ? '+' : ''}{transaction.priceChange.toFixed(2)}%
-                  </span>
-                  <Sparkline data={mockSparklineData} />
-                </div>
+              <TableCell className="text-right font-mono">
+                {transaction.price.toLocaleString()} {transaction.currency}
               </TableCell>
+              <TableCell>{new Date(transaction.transactionDate).toLocaleDateString()}</TableCell>
             </TableRow>
           ))}
         </TableBody>
