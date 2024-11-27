@@ -33,96 +33,116 @@ const COMPANY_SYMBOLS: { [key: string]: string } = {
   'Nibe': 'NIBE-B.ST'
 };
 
-async function fetchStockPrice(): Promise<{ currentPrice: number, changePercent: number } | null> {
+async function fetchStockPrices(symbols: string[]): Promise<Map<string, { currentPrice: number, changePercent: number }>> {
+  const uniqueSymbols = [...new Set(symbols)];
+  const priceMap = new Map();
+
   try {
-    console.log('Fetching stock price for BOL.ST...');
-    const response = await fetch(`/api/stock?symbol=BOL.ST`);
-    console.log('Stock API response status:', response.status);
-    const data = await response.json();
-    console.log('Stock API data:', data);
-    
-    if (data.chart?.result?.[0]) {
-      const result = data.chart.result[0];
-      const currentPrice = result.meta.regularMarketPrice;
-      const previousClose = result.meta.chartPreviousClose || result.meta.previousClose;
+    // Fetch prices in batches of 5 to avoid rate limits
+    for (let i = 0; i < uniqueSymbols.length; i += 5) {
+      const batch = uniqueSymbols.slice(i, i + 5);
+      const promises = batch.map(symbol => 
+        fetch(`/api/stock?symbol=${encodeURIComponent(symbol)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.chart?.result?.[0]) {
+              const result = data.chart.result[0];
+              priceMap.set(symbol, {
+                currentPrice: result.meta.regularMarketPrice,
+                changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
+              });
+            }
+          })
+          .catch(error => console.error(`Error fetching ${symbol}:`, error))
+      );
       
-      console.log('Current price:', currentPrice);
-      console.log('Previous close:', previousClose);
-      
-      const stockData = {
-        currentPrice,
-        changePercent: previousClose ? ((currentPrice - previousClose) / previousClose) * 100 : 0
-      };
-      console.log('Processed stock data:', stockData);
-      return stockData;
+      await Promise.all(promises);
+      // Small delay between batches
+      if (i + 5 < uniqueSymbols.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
-    console.log('No stock data found in response');
-    return null;
   } catch (error) {
-    console.error('Error fetching stock price:', error);
-    return null;
+    console.error('Error fetching stock prices:', error);
   }
+
+  return priceMap;
 }
 
 export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> {
   try {
     console.log('Starting to fetch insider transactions...');
-    const response = await fetch('/api/insider');
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const allTransactions: InsiderTransaction[] = [];
+    const symbols: string[] = []; // To collect all symbols
+
+    // Load 10 pages
+    for (let page = 1; page <= 10; page++) {
+      const response = await fetch(`https://marknadssok.fi.se/publiceringsklient/?Page=${page}`);
+      
+      if (!response.ok) {
+        throw new Error(`Upstream server responded with status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/html');
+      
+      // Find all tables in the document
+      const tables = doc.querySelectorAll('table');
+      console.log('Number of tables found:', tables.length);
+      
+      // Iterate through each table found
+      tables.forEach((table) => {
+        const rows = table.querySelectorAll('tr:not(:first-child)');
+        console.log('Found rows in table:', rows.length);
+        
+        const pageTransactions = Array.from(rows).map(row => {
+          const cells = row.querySelectorAll('td');
+          const issuer = cells[1]?.textContent?.trim() || '';
+          const symbol = COMPANY_SYMBOLS[issuer]; // Get the symbol based on issuer
+          if (symbol) symbols.push(symbol); // Collect symbols for stock price fetching
+          
+          return {
+            publishDate: cells[0]?.textContent?.trim() || '',
+            issuer,
+            insider: cells[2]?.textContent?.trim() || '',
+            position: cells[3]?.textContent?.trim() || '',
+            related: cells[4]?.textContent?.trim() === 'Ja',
+            type: cells[5]?.textContent?.trim() as 'Förvärv' | 'Avyttring',
+            instrumentName: cells[6]?.textContent?.trim() || '',
+            instrumentType: cells[7]?.textContent?.trim() || '',
+            isin: cells[8]?.textContent?.trim() || '',
+            transactionDate: cells[9]?.textContent?.trim() || '',
+            volume: parseFloat(cells[10]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
+            volumeUnit: cells[11]?.textContent?.trim() || '',
+            price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
+            currency: cells[13]?.textContent?.trim() || '',
+            details: cells[15]?.querySelector('a')?.href,
+          };
+        });
+        
+        console.log('Parsed transactions in table:', pageTransactions.length);
+        allTransactions.push(...pageTransactions);
+      });
     }
     
-    const text = await response.text();
-    console.log('Received response text length:', text.length);
-    
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-    
-    // Find all tables in the document
-    const tables = doc.querySelectorAll('table');
-    console.log('Number of tables found:', tables.length);
-    
-    const allTransactions: InsiderTransaction[] = [];
-    
-    // Fetch stock price once
-    const stockData = await fetchStockPrice();
-    console.log('Stock data:', stockData);
-    
-    // Iterate through each table found
-    tables.forEach((table) => {
-      const rows = table.querySelectorAll('tr:not(:first-child)');
-      console.log('Found rows in table:', rows.length);
-      
-      const pageTransactions = Array.from(rows).map(row => {
-        const cells = row.querySelectorAll('td');
-        return {
-          publishDate: cells[0]?.textContent?.trim() || '',
-          issuer: cells[1]?.textContent?.trim() || '',
-          insider: cells[2]?.textContent?.trim() || '',
-          position: cells[3]?.textContent?.trim() || '',
-          related: cells[4]?.textContent?.trim() === 'Ja',
-          type: cells[5]?.textContent?.trim() as 'Förvärv' | 'Avyttring',
-          instrumentName: cells[6]?.textContent?.trim() || '',
-          instrumentType: cells[7]?.textContent?.trim() || '',
-          isin: cells[8]?.textContent?.trim() || '',
-          transactionDate: cells[9]?.textContent?.trim() || '',
-          volume: parseFloat(cells[10]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
-          volumeUnit: cells[11]?.textContent?.trim() || '',
-          price: parseFloat(cells[12]?.textContent?.trim()?.replace(/\s/g, '') || '0'),
-          currency: cells[13]?.textContent?.trim() || '',
-          details: cells[15]?.querySelector('a')?.href,
-          currentPrice: stockData?.currentPrice,
-          priceChange: stockData?.changePercent
-        };
-      });
-      
-      console.log('Parsed transactions in table:', pageTransactions.length);
-      allTransactions.push(...pageTransactions);
-    });
-    
     console.log('Total transactions parsed:', allTransactions.length);
-    return allTransactions;
+    
+    // Fetch stock prices for all collected symbols
+    const stockPrices = await fetchStockPrices(symbols);
+    
+    // Add stock prices to transactions
+    return allTransactions.map(transaction => {
+      const stockData = stockPrices.get(COMPANY_SYMBOLS[transaction.issuer]);
+      if (stockData) {
+        return {
+          ...transaction,
+          currentPrice: stockData.currentPrice,
+          priceChange: stockData.changePercent
+        };
+      }
+      return transaction;
+    });
     
   } catch (error) {
     console.error('Error fetching insider transactions:', error);
