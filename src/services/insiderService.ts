@@ -43,9 +43,15 @@ async function fetchStockPrice(): Promise<{ currentPrice: number, changePercent:
     
     if (data.chart?.result?.[0]) {
       const result = data.chart.result[0];
+      const currentPrice = result.meta.regularMarketPrice;
+      const previousClose = result.meta.chartPreviousClose || result.meta.previousClose;
+      
+      console.log('Current price:', currentPrice);
+      console.log('Previous close:', previousClose);
+      
       const stockData = {
-        currentPrice: result.meta.regularMarketPrice,
-        changePercent: ((result.meta.regularMarketPrice - result.meta.previousClose) / result.meta.previousClose) * 100
+        currentPrice,
+        changePercent: previousClose ? ((currentPrice - previousClose) / previousClose) * 100 : 0
       };
       console.log('Processed stock data:', stockData);
       return stockData;

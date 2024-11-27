@@ -6,52 +6,38 @@ import { InsiderTransaction } from '@/types/insider';
 import { fetchInsiderTransactions } from '@/services/insiderService';
 
 export function TransactionsTable() {
-  const [data, setData] = useState<InsiderTransaction[]>([]);
+  const [transactions, setTransactions] = useState<InsiderTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortColumn, setSortColumn] = useState<keyof InsiderTransaction>('publishDate');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const data = await fetchInsiderTransactions();
+        console.log('Fetched transactions:', data); // Debug log
+        setTransactions(data);
+      } catch (err) {
+        console.error('Error loading transactions:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load transactions');
+      } finally {
+        setLoading(false);
+      }
+    }
+
     loadData();
   }, []);
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const transactions = await fetchInsiderTransactions();
-      setData(transactions);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    } finally {
-      setLoading(false);
-    }
+  if (loading) {
+    return <div className="flex justify-center p-4">Loading transactions...</div>;
   }
 
-  const handleSort = (column: keyof InsiderTransaction) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
+  if (error) {
+    return <div className="text-red-500 p-4">Error: {error}</div>;
+  }
 
-  const sortedData = [...data].sort((a, b) => {
-    const aValue = a[sortColumn];
-    const bValue = b[sortColumn];
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return direction * aValue.localeCompare(bValue);
-    }
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return direction * (aValue - bValue);
-    }
-    return 0;
-  });
-
-  if (loading) {
-    return <div>Loading...</div>;
+  if (!transactions.length) {
+    return <div className="p-4">No transactions found</div>;
   }
 
   return (
@@ -59,49 +45,46 @@ export function TransactionsTable() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead 
-              className="cursor-pointer hover:text-primary"
-              onClick={() => handleSort('insider')}
-            >
-              Insider Name
-              {sortColumn === 'insider' && (
-                sortDirection === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
-                <ArrowDown className="inline ml-1 h-4 w-4" />
-              )}
-            </TableHead>
-            <TableHead>Company Name</TableHead>
-            <TableHead>Position</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Insider</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Volume</TableHead>
             <TableHead className="text-right">Price</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Current Price</TableHead>
+            <TableHead className="text-right">Change %</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedData.map((transaction, index) => (
-            <TableRow 
-              key={`${transaction.insider}-${index}`}
-              className="hover:bg-primary/5 transition-colors"
-            >
-              <TableCell className="font-medium">{transaction.insider}</TableCell>
+          {transactions.map((transaction, index) => (
+            <TableRow key={index}>
+              <TableCell>{transaction.publishDate}</TableCell>
               <TableCell>{transaction.issuer}</TableCell>
-              <TableCell>{transaction.position}</TableCell>
+              <TableCell>{transaction.insider}</TableCell>
               <TableCell>
                 <span className={cn(
                   "px-2 py-1 rounded-full text-xs font-semibold",
-                  transaction.type === 'Förvärv' ? "bg-green-500/20 text-green-500" : 
-                  "bg-red-500/20 text-red-500"
+                  transaction.type === 'Förvärv' 
+                    ? "bg-green-500/20 text-green-500" 
+                    : "bg-red-500/20 text-red-500"
                 )}>
                   {transaction.type}
                 </span>
               </TableCell>
-              <TableCell className="text-right font-mono">
+              <TableCell className="text-right">
                 {transaction.volume.toLocaleString()} {transaction.volumeUnit}
               </TableCell>
-              <TableCell className="text-right font-mono">
+              <TableCell className="text-right">
                 {transaction.price.toLocaleString()} {transaction.currency}
               </TableCell>
-              <TableCell>{new Date(transaction.transactionDate).toLocaleDateString()}</TableCell>
+              <TableCell className="text-right">
+                {transaction.currentPrice?.toLocaleString() ?? '-'}
+              </TableCell>
+              <TableCell className="text-right">
+                {transaction.priceChange 
+                  ? `${transaction.priceChange.toFixed(2)}%` 
+                  : '-'}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
